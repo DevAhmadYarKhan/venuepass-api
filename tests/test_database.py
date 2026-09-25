@@ -5,8 +5,6 @@ from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 import pytest
-from alembic import command
-from alembic.config import Config
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -30,18 +28,6 @@ def test_database_urls_are_configured() -> None:
 
     assert settings.database_url == runtime_url
     assert test_settings.test_database_url == test_url
-
-
-@pytest.fixture(scope="module")
-def migrated_test_database() -> None:
-    """Upgrade the configured test database before integration tests execute."""
-    alembic_config = Config("alembic.ini")
-
-    # Pass the test URL directly to Alembic so runtime settings are not involved.
-    alembic_config.attributes["database_url"] = (
-        get_test_settings().test_database_url
-    )
-    command.upgrade(alembic_config, "head")
 
 
 async def create_event_and_roll_back() -> None:
