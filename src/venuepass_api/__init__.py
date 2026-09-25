@@ -1,1 +1,1 @@
-"""VenuePass API package."""
+"""Expose the top-level package for the VenuePass API application."""
