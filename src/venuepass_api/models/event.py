@@ -4,7 +4,17 @@ from datetime import datetime
 from enum import StrEnum
 from uuid import UUID
 
-from sqlalchemy import CheckConstraint, DateTime, Enum, String, Text, Uuid, func, text
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    Enum,
+    Index,
+    String,
+    Text,
+    Uuid,
+    func,
+    text,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from venuepass_api.models.base import Base
@@ -31,10 +41,13 @@ class Event(Base):
 
     __tablename__ = "events"
 
-    # Protect core business invariants even when writes bypass the application.
+    # Keep database-level invariants and the main read path next to the table
+    # definition so direct database users receive the same guarantees.
     __table_args__ = (
         CheckConstraint("capacity > 0", name="ck_events_capacity_positive"),
         CheckConstraint("ends_at > starts_at", name="ck_events_valid_time_range"),
+        # Match the public catalog's status filter and deterministic ordering.
+        Index("ix_events_status_starts_at_id", "status", "starts_at", "id"),
     )
 
     # Generate opaque public identifiers inside PostgreSQL.

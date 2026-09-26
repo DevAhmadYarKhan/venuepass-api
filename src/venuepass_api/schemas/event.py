@@ -62,3 +62,15 @@ class EventResponse(BaseModel):
     status: EventStatus
     created_at: AwareDatetime
     updated_at: AwareDatetime
+
+
+class EventListResponse(BaseModel):
+    """Serialize one page of events with its pagination metadata."""
+
+    # Reuse the single-resource contract so list and create responses cannot
+    # drift into different representations of an Event.
+    items: list[EventResponse]
+    # Total counts every matching Event before limit and offset are applied.
+    total: int
+    limit: int
+    offset: int

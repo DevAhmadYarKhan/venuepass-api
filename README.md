@@ -89,3 +89,39 @@ A successful request returns `201 Created` with the stored event:
   "updated_at": "2026-09-25T12:00:00Z"
 }
 ```
+
+## List events
+
+Published events can be listed in ascending start-time order. The endpoint
+accepts an `offset` between 0 and 9,223,372,036,854,775,807 (default `0`) and a
+`limit` between 1 and 100 (default `20`). Draft, cancelled, and completed
+events are not returned.
+
+```bash
+curl "http://127.0.0.1:8000/events?limit=20&offset=0"
+```
+
+A successful request returns `200 OK` with the selected page and the total
+number of published events:
+
+```json
+{
+  "items": [
+    {
+      "id": "3c2499b3-c76f-45e4-85f5-ab2766b077a8",
+      "name": "VenuePass Launch",
+      "description": "Opening night",
+      "venue": "London",
+      "starts_at": "2026-10-20T18:00:00Z",
+      "ends_at": "2026-10-20T21:00:00Z",
+      "capacity": 250,
+      "status": "published",
+      "created_at": "2026-09-25T12:00:00Z",
+      "updated_at": "2026-09-25T12:00:00Z"
+    }
+  ],
+  "total": 1,
+  "limit": 20,
+  "offset": 0
+}
+```
