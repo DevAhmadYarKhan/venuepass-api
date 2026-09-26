@@ -82,10 +82,10 @@ def event_client(
 def published_event_client(
     migrated_test_database: None,
 ) -> Iterator[TestClient]:
-    """Serve requests with published and non-public Events in the database."""
+    """Serve reads with published and non-public Events in the database."""
 
     async def override_session() -> AsyncIterator[AsyncSession]:
-        """Seed an isolated transaction before serving a listing request."""
+        """Seed an isolated transaction before serving an Event read."""
         engine = create_async_engine(get_test_settings().test_database_url)
         first_start = datetime.now(UTC) + timedelta(days=1)
 
@@ -135,6 +135,7 @@ def published_event_client(
                                     status=EventStatus.PUBLISHED,
                                 ),
                                 Event(
+                                    id=UUID("00000000-0000-0000-0000-000000000011"),
                                     name="Hidden draft",
                                     venue="Leeds",
                                     starts_at=first_start,
@@ -143,6 +144,7 @@ def published_event_client(
                                     status=EventStatus.DRAFT,
                                 ),
                                 Event(
+                                    id=UUID("00000000-0000-0000-0000-000000000012"),
                                     name="Hidden cancelled event",
                                     venue="York",
                                     starts_at=first_start,
@@ -151,6 +153,7 @@ def published_event_client(
                                     status=EventStatus.CANCELLED,
                                 ),
                                 Event(
+                                    id=UUID("00000000-0000-0000-0000-000000000013"),
                                     name="Hidden completed event",
                                     venue="Bath",
                                     starts_at=first_start,
@@ -316,6 +319,82 @@ def test_list_events_rejects_invalid_pagination(
     assert response.status_code == 422
     assert response.json()["detail"]
     assert inserted_row_counts in ([], [0])
+
+
+def test_get_event_returns_a_published_event(
+    published_event_client: TestClient,
+) -> None:
+    """Return the complete public representation of a published Event."""
+    event_id = "00000000-0000-0000-0000-000000000003"
+
+    response = published_event_client.get(f"/events/{event_id}")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert set(body) == {
+        "id",
+        "name",
+        "description",
+        "venue",
+        "starts_at",
+        "ends_at",
+        "capacity",
+        "status",
+        "created_at",
+        "updated_at",
+    }
+    assert body["id"] == event_id
+    assert body["name"] == "Later published event"
+    assert body["description"] is None
+    assert body["venue"] == "Bristol"
+    assert body["capacity"] == 50
+    assert body["status"] == "published"
+    assert datetime.fromisoformat(body["starts_at"]).tzinfo is not None
+    assert datetime.fromisoformat(body["ends_at"]).tzinfo is not None
+    assert datetime.fromisoformat(body["created_at"]).tzinfo is not None
+    assert datetime.fromisoformat(body["updated_at"]).tzinfo is not None
+
+
+@pytest.mark.parametrize(
+    "event_id",
+    [
+        pytest.param(
+            "00000000-0000-0000-0000-000000000011",
+            id="draft",
+        ),
+        pytest.param(
+            "00000000-0000-0000-0000-000000000012",
+            id="cancelled",
+        ),
+        pytest.param(
+            "00000000-0000-0000-0000-000000000013",
+            id="completed",
+        ),
+        pytest.param(
+            "00000000-0000-0000-0000-000000000099",
+            id="unknown",
+        ),
+    ],
+)
+def test_get_event_hides_non_public_and_unknown_events(
+    published_event_client: TestClient,
+    event_id: str,
+) -> None:
+    """Use the same 404 response for every Event unavailable publicly."""
+    response = published_event_client.get(f"/events/{event_id}")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Event not found"}
+
+
+def test_get_event_rejects_a_malformed_id(
+    published_event_client: TestClient,
+) -> None:
+    """Return FastAPI's standard 422 response for a non-UUID path value."""
+    response = published_event_client.get("/events/not-a-uuid")
+
+    assert response.status_code == 422
+    assert response.json()["detail"]
 
 
 def invalid_event_payloads() -> list[Any]:

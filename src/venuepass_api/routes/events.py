@@ -1,8 +1,9 @@
 """Handle HTTP operations for events."""
 
 from typing import Annotated
+from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -52,6 +53,27 @@ async def list_events(
         limit=limit,
         offset=offset,
     )
+
+
+@router.get("/{event_id}", response_model=EventResponse)
+async def get_event(event_id: UUID, session: SessionDependency) -> Event:
+    """Return one published Event by its public identifier."""
+    # Apply visibility in the lookup itself so unknown and non-public IDs share
+    # one response and do not reveal whether a hidden Event exists.
+    event = await session.scalar(
+        select(Event).where(
+            Event.id == event_id,
+            Event.status == EventStatus.PUBLISHED,
+        )
+    )
+
+    if event is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Event not found",
+        )
+
+    return event
 
 
 @router.post(

@@ -125,3 +125,23 @@ number of published events:
   "offset": 0
 }
 ```
+
+## Get an event
+
+A published event can be retrieved by its UUID:
+
+```bash
+curl http://127.0.0.1:8000/events/3c2499b3-c76f-45e4-85f5-ab2766b077a8
+```
+
+A successful request returns `200 OK` using the same event representation as
+the create and list endpoints. Unknown, draft, cancelled, and completed event
+IDs return `404 Not Found` without revealing whether a non-public event exists:
+
+```json
+{
+  "detail": "Event not found"
+}
+```
+
+Malformed UUIDs return FastAPI's standard `422 Unprocessable Entity` response.
